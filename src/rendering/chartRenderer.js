@@ -1,4 +1,5 @@
 import { clamp } from "../core/math.js";
+import { WORLD } from "../core/constants.js";
 import { state } from "../state.js";
 
 export function createChartRenderer(chart) {
@@ -21,11 +22,12 @@ export function createChartRenderer(chart) {
     chartCtx.clearRect(0, 0, width, height);
     chartCtx.fillStyle = "rgba(255,255,255,0.035)";
     chartCtx.fillRect(0, 0, width, height);
+    const legendHeight = drawLegend(width);
 
     chartCtx.strokeStyle = "rgba(241,244,236,0.08)";
     chartCtx.lineWidth = 1;
     for (let i = 1; i < 4; i += 1) {
-      const y = (height / 4) * i;
+      const y = legendHeight + ((height - legendHeight - 8) / 4) * i;
       chartCtx.beginPath();
       chartCtx.moveTo(0, y);
       chartCtx.lineTo(width, y);
@@ -38,26 +40,68 @@ export function createChartRenderer(chart) {
     plotLine(
       state.history.map((point) => point.population / maxPopulation),
       "#d7ef6f",
+      legendHeight,
     );
     plotLine(
       state.history.map((point) => point.speed),
       "#68d4bd",
+      legendHeight,
+    );
+    plotLine(
+      state.history.map((point) => point.foxes / WORLD.maxFoxes),
+      "#ee8436",
+      legendHeight,
+    );
+    plotLine(
+      state.history.map((point) => point.foxSpeed),
+      "#ffb86b",
+      legendHeight,
     );
   }
 
-  function plotLine(values, color) {
+  function plotLine(values, color, top) {
     const width = chart.clientWidth;
     const height = chart.clientHeight;
+    const bottom = 8;
     chartCtx.strokeStyle = color;
     chartCtx.lineWidth = 2;
     chartCtx.beginPath();
     values.forEach((value, index) => {
       const x = (index / Math.max(1, values.length - 1)) * width;
-      const y = height - clamp(value, 0, 1) * (height - 18) - 9;
+      const y = height - bottom - clamp(value, 0, 1) * (height - top - bottom);
       if (index === 0) chartCtx.moveTo(x, y);
       else chartCtx.lineTo(x, y);
     });
     chartCtx.stroke();
+  }
+
+  function drawLegend(width) {
+    const items = [
+      ["Lapins", "#d7ef6f"],
+      ["Vit. lapins", "#68d4bd"],
+      ["Renards", "#ee8436"],
+      ["Vit. renards", "#ffb86b"],
+    ];
+
+    chartCtx.save();
+    chartCtx.font = "11px Inter, ui-sans-serif, system-ui, sans-serif";
+    chartCtx.textBaseline = "middle";
+    let x = 10;
+    let y = 11;
+    for (const [label, color] of items) {
+      const itemWidth = chartCtx.measureText(label).width + 34;
+      if (x > 10 && x + itemWidth > width - 8) {
+        x = 10;
+        y += 15;
+      }
+      chartCtx.fillStyle = color;
+      chartCtx.fillRect(x, y - 1, 10, 3);
+      chartCtx.fillStyle = "rgba(241,244,236,0.72)";
+      chartCtx.fillText(label, x + 14, y);
+      x += itemWidth;
+    }
+    chartCtx.restore();
+    return y + 13;
   }
 
   return { draw, resize };

@@ -35,6 +35,7 @@ export function createWorldRenderer(canvas) {
     const drawables = [];
     for (const food of state.food) drawables.push({ kind: "food", y: food.x + food.y, item: food });
     for (const rabbit of state.rabbits) drawables.push({ kind: "rabbit", y: rabbit.x + rabbit.y + 0.12, item: rabbit });
+    for (const fox of state.foxes) drawables.push({ kind: "fox", y: fox.x + fox.y + 0.18, item: fox });
     for (const particle of state.particles) {
       drawables.push({ kind: "particle", y: particle.x + particle.y + particle.z, item: particle });
     }
@@ -43,6 +44,7 @@ export function createWorldRenderer(canvas) {
     for (const drawable of drawables) {
       if (drawable.kind === "food") drawFood(drawable.item);
       if (drawable.kind === "rabbit") drawRabbit(drawable.item);
+      if (drawable.kind === "fox") drawFox(drawable.item);
       if (drawable.kind === "particle") drawParticle(drawable.item);
     }
 
@@ -278,6 +280,102 @@ export function createWorldRenderer(canvas) {
       ctx.beginPath();
       ctx.arc(-2.5, -8.8, 1.15, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function drawFox(fox) {
+    fox.renderX = lerp(fox.renderX ?? fox.x, fox.x, 0.38);
+    fox.renderY = lerp(fox.renderY ?? fox.y, fox.y, 0.38);
+
+    const tile = getTerrainAt(state.terrain, fox.renderX, fox.renderY);
+    const hop = Math.max(0, Math.sin(fox.hop)) * 0.18;
+    const p = worldToIso(fox.renderX, fox.renderY, tile.h + hop + 0.02);
+    const maturity = clamp(fox.age / fox.maturityAge, 0.42, 1);
+    const scale = lerp(0.72, 1.18, maturity) * lerp(0.84, 1.2, fox.genes.size) * state.camera.zoom;
+    const direction = fox.heading;
+    const dx = Math.cos(direction);
+    const facing = Math.sign(dx || 1);
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = "rgba(6,12,9,0.32)";
+    ctx.beginPath();
+    ctx.ellipse(0, 8.5, 13, 4.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (fox.intent === "hunt") {
+      ctx.strokeStyle = "rgba(255,190,99,0.35)";
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 15, 7, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.rotate(direction * 0.16);
+
+    const red = Math.round(188 + fox.genes.speed * 54);
+    const green = Math.round(82 + fox.genes.metabolism * 54);
+    const blue = Math.round(34 + fox.genes.vision * 24);
+    const body = fox.energy < 34 ? "#b86432" : `rgb(${red},${green},${blue})`;
+    const dark = "#6e3c2e";
+    const cream = "#f2dbc2";
+
+    ctx.fillStyle = body;
+    ctx.strokeStyle = "rgba(35,24,18,0.26)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 11.8, lerp(4.6, 5.8, fox.genes.size), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.ellipse(7.7 * facing, -3.4, 5.2, 4.2, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(5.8 * facing, -6.7);
+    ctx.lineTo(7.6 * facing, -13.2);
+    ctx.lineTo(9.4 * facing, -6.5);
+    ctx.closePath();
+    ctx.moveTo(10.1 * facing, -6.2);
+    ctx.lineTo(12.4 * facing, -12.4);
+    ctx.lineTo(13.1 * facing, -5.2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = cream;
+    ctx.beginPath();
+    ctx.ellipse(10.6 * facing, -1.6, 2.4, 1.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.arc(11.4 * facing, -4.3, 0.85, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.ellipse(-10.5 * facing, -0.4, lerp(7.2, 9.7, fox.genes.speed), 2.8, -0.18 * facing, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = cream;
+    ctx.beginPath();
+    ctx.ellipse(-17.4 * facing, -0.8, 3.2, 1.8, -0.18 * facing, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (fox.energy < 30) {
+      ctx.strokeStyle = "rgba(229,121,99,0.76)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 13.5, 0.16, Math.PI * 1.34);
+      ctx.stroke();
     }
 
     ctx.restore();
