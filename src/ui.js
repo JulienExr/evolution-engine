@@ -6,20 +6,28 @@ export function getUi() {
     speedLabel: document.querySelector("#speedLabel"),
     foodInput: document.querySelector("#foodInput"),
     mutationInput: document.querySelector("#mutationInput"),
+    predatorInput: document.querySelector("#predatorInput"),
+    mateInput: document.querySelector("#mateInput"),
     climateBtn: document.querySelector("#climateBtn"),
     pressureBtn: document.querySelector("#pressureBtn"),
+    seasonBtn: document.querySelector("#seasonBtn"),
+    droughtBtn: document.querySelector("#droughtBtn"),
+    migrantBtn: document.querySelector("#migrantBtn"),
     population: document.querySelector("#statPopulation"),
     generation: document.querySelector("#statGeneration"),
     births: document.querySelector("#statBirths"),
     deaths: document.querySelector("#statDeaths"),
+    adults: document.querySelector("#statAdults"),
+    pregnant: document.querySelector("#statPregnant"),
     traitSpeed: document.querySelector("#traitSpeed"),
     traitVision: document.querySelector("#traitVision"),
     traitMetabolism: document.querySelector("#traitMetabolism"),
     traitSize: document.querySelector("#traitSize"),
+    traitFertility: document.querySelector("#traitFertility"),
   };
 }
 
-export function bindUiControls(ui, state, { onReset }) {
+export function bindUiControls(ui, state, { onReset, onDrought, onMigrants }) {
   ui.pauseBtn.addEventListener("click", () => {
     state.running = !state.running;
     ui.pauseBtn.textContent = state.running ? "Pause" : "Lecture";
@@ -40,6 +48,14 @@ export function bindUiControls(ui, state, { onReset }) {
     state.mutationRate = Number(ui.mutationInput.value);
   });
 
+  ui.predatorInput.addEventListener("input", () => {
+    state.predatorPressure = Number(ui.predatorInput.value);
+  });
+
+  ui.mateInput.addEventListener("input", () => {
+    state.mateSelectivity = Number(ui.mateInput.value);
+  });
+
   ui.climateBtn.addEventListener("click", () => {
     const next = state.climate === "stable" ? "lush" : state.climate === "lush" ? "dry" : "stable";
     state.climate = next;
@@ -53,15 +69,29 @@ export function bindUiControls(ui, state, { onReset }) {
     ui.pressureBtn.textContent =
       next === "low" ? "Pression faible" : next === "medium" ? "Pression moyenne" : "Pression forte";
   });
+
+  ui.seasonBtn.addEventListener("click", () => {
+    state.seasons = !state.seasons;
+    ui.seasonBtn.textContent = state.seasons ? "Saisons actives" : "Saisons coupees";
+  });
+
+  ui.droughtBtn.addEventListener("click", onDrought);
+  ui.migrantBtn.addEventListener("click", onMigrants);
 }
 
 export function updateStats(ui, state, averages) {
+  const adults = state.rabbits.filter((rabbit) => rabbit.age >= rabbit.maturityAge).length;
+  const pregnant = state.rabbits.filter((rabbit) => rabbit.pregnancy).length;
+
   ui.population.textContent = state.rabbits.length.toString();
   ui.generation.textContent = Math.round(averages.generation).toString();
   ui.births.textContent = state.births.toString();
   ui.deaths.textContent = state.deaths.toString();
+  ui.adults.textContent = adults.toString();
+  ui.pregnant.textContent = pregnant.toString();
   ui.traitSpeed.value = averages.speed;
   ui.traitVision.value = averages.vision;
   ui.traitMetabolism.value = averages.metabolism;
   ui.traitSize.value = averages.size;
+  ui.traitFertility.value = averages.fertility;
 }
