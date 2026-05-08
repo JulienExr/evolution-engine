@@ -18,9 +18,12 @@ http://127.0.0.1:4173
 
 - Les lapins se deplacent sur une prairie isometrique.
 - Chaque lapin possede des genes : vitesse, vision, metabolisme, fertilite et taille.
-- Les lapins consomment de l'energie en se deplacant, mangent les pousses, se reproduisent, mutent, vieillissent et meurent.
+- Les lapins ont un sexe, une maturite, une energie, une gestation et peuvent donner naissance a des portees.
+- Les lapins consomment de l'energie en se deplacant, mangent les pousses, cherchent un partenaire, mutent, vieillissent et meurent.
 - Les genes ont des compromis : par exemple, un lapin rapide atteint mieux la nourriture mais consomme plus.
-- Les controles permettent de modifier la vitesse de simulation, la quantite de nourriture, le taux de mutation, le climat et la pression de selection.
+- Les predateurs favorisent indirectement les lapins rapides et attentifs.
+- Les saisons et les chocs secs modifient la croissance de la nourriture.
+- Les controles permettent de modifier la vitesse de simulation, la quantite de nourriture, le taux de mutation, le climat, la pression de selection, la predation et la selection sexuelle.
 
 ## Fichiers
 
