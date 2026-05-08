@@ -1,6 +1,13 @@
 import { createChartRenderer } from "./rendering/chartRenderer.js";
 import { createWorldRenderer } from "./rendering/worldRenderer.js";
-import { getAverages, recordHistory, resetSimulation, stepSimulation } from "./simulation/simulation.js";
+import {
+  getAverages,
+  introduceMigrants,
+  recordHistory,
+  resetSimulation,
+  stepSimulation,
+  triggerDrought,
+} from "./simulation/simulation.js";
 import { state } from "./state.js";
 import { bindUiControls, getUi, updateStats } from "./ui.js";
 
@@ -50,7 +57,17 @@ function frame(now) {
 }
 
 window.addEventListener("resize", resize);
-bindUiControls(ui, state, { onReset: reset });
+bindUiControls(ui, state, {
+  onReset: reset,
+  onDrought: () => {
+    triggerDrought();
+    updateUI();
+  },
+  onMigrants: () => {
+    introduceMigrants();
+    updateUI();
+  },
+});
 worldRenderer.attachCameraControls();
 
 resize();

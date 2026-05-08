@@ -11,8 +11,12 @@ export const state = {
   simSpeed: 1,
   foodTarget: 145,
   mutationRate: 0.07,
+  predatorPressure: 0.16,
+  mateSelectivity: 0.35,
   climate: "stable",
   pressure: "low",
+  seasons: true,
+  droughtTimer: 0,
   camera: {
     x: 0,
     y: 0,
