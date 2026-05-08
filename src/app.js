@@ -2,7 +2,9 @@ import { createChartRenderer } from "./rendering/chartRenderer.js";
 import { createWorldRenderer } from "./rendering/worldRenderer.js";
 import {
   getAverages,
-  introduceMigrants,
+  getFoxAverages,
+  introduceFoxes,
+  introduceRabbits,
   recordHistory,
   resetSimulation,
   stepSimulation,
@@ -27,7 +29,7 @@ function resize() {
 }
 
 function updateUI() {
-  updateStats(ui, state, getAverages());
+  updateStats(ui, state, getAverages(), getFoxAverages());
   chartRenderer.draw();
 }
 
@@ -63,8 +65,12 @@ bindUiControls(ui, state, {
     triggerDrought();
     updateUI();
   },
-  onMigrants: () => {
-    introduceMigrants();
+  onRabbits: () => {
+    introduceRabbits();
+    updateUI();
+  },
+  onFoxes: () => {
+    introduceFoxes();
     updateUI();
   },
 });
