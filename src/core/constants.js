@@ -5,5 +5,6 @@ export const WORLD = {
   tileH: 22,
   elevation: 8,
   maxRabbits: 360,
+  maxFoxes: 48,
   initialRabbits: 42,
 };
