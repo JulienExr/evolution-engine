@@ -20,9 +20,11 @@ export function createWorldRenderer(canvas) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
 
+    const drought = state.droughtTimer > 0;
+    const seasonWarmth = state.seasons ? Math.sin(state.tick / 560) : 0;
     const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, "#273b35");
-    sky.addColorStop(0.46, "#1b2824");
+    sky.addColorStop(0, drought ? "#3c3527" : seasonWarmth < -0.45 ? "#223a3a" : "#273b35");
+    sky.addColorStop(0.46, drought ? "#282419" : "#1b2824");
     sky.addColorStop(1, "#111614");
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, h);
@@ -119,9 +121,11 @@ export function createWorldRenderer(canvas) {
 
   function grassColor(tile) {
     const wet = tile.moisture;
-    const r = Math.round(58 + tile.shade * 38 - wet * 10);
-    const g = Math.round(104 + tile.shade * 82 + wet * 28);
-    const b = Math.round(65 + tile.shade * 38 + wet * 18);
+    const drought = state.droughtTimer > 0 ? 1 : 0;
+    const winter = state.seasons ? clamp(-Math.sin(state.tick / 560), 0, 1) : 0;
+    const r = Math.round(58 + tile.shade * 38 - wet * 10 + drought * 36 + winter * 4);
+    const g = Math.round(104 + tile.shade * 82 + wet * 28 - drought * 42 - winter * 18);
+    const b = Math.round(65 + tile.shade * 38 + wet * 18 - drought * 20 + winter * 18);
     return `rgb(${r},${g},${b})`;
   }
 
@@ -162,9 +166,10 @@ export function createWorldRenderer(canvas) {
   function rabbitColor(rabbit) {
     const speed = rabbit.genes.speed;
     const metabolism = rabbit.genes.metabolism;
-    const r = Math.round(174 + speed * 46);
+    const sexTint = rabbit.sex === "female" ? 8 : -6;
+    const r = Math.round(174 + speed * 46 + sexTint);
     const g = Math.round(166 + metabolism * 42);
-    const b = Math.round(136 + rabbit.genes.vision * 42);
+    const b = Math.round(136 + rabbit.genes.vision * 42 - sexTint);
     return `rgb(${r},${g},${b})`;
   }
 
@@ -197,10 +202,16 @@ export function createWorldRenderer(canvas) {
   }
 
   function drawRabbit(rabbit) {
-    const tile = getTerrainAt(state.terrain, rabbit.x, rabbit.y);
+    rabbit.renderX = lerp(rabbit.renderX ?? rabbit.x, rabbit.x, 0.34);
+    rabbit.renderY = lerp(rabbit.renderY ?? rabbit.y, rabbit.y, 0.34);
+
+    const tile = getTerrainAt(state.terrain, rabbit.renderX, rabbit.renderY);
     const hop = Math.max(0, Math.sin(rabbit.hop)) * 0.26;
-    const p = worldToIso(rabbit.x, rabbit.y, tile.h + hop);
-    const scale = lerp(0.66, 1.22, rabbit.genes.size) * state.camera.zoom;
+    const p = worldToIso(rabbit.renderX, rabbit.renderY, tile.h + hop);
+    const maturity = clamp(rabbit.age / rabbit.maturityAge, 0, 1);
+    const ageScale = lerp(0.48, 1, maturity);
+    const pregnancyScale = rabbit.pregnancy ? 1.08 : 1;
+    const scale = lerp(0.66, 1.22, rabbit.genes.size) * ageScale * pregnancyScale * state.camera.zoom;
     const direction = rabbit.heading;
     const dx = Math.cos(direction);
     const earBoost = lerp(0.84, 1.42, rabbit.genes.vision);
@@ -212,8 +223,17 @@ export function createWorldRenderer(canvas) {
 
     ctx.fillStyle = "rgba(6,12,9,0.26)";
     ctx.beginPath();
-    ctx.ellipse(0, 8, 10, 3.6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 8, 10 * pregnancyScale, 3.6, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (rabbit.pregnancy) {
+      const pulse = 0.45 + Math.sin(state.tick / 18 + rabbit.age * 0.02) * 0.12;
+      ctx.strokeStyle = `rgba(104,212,189,${pulse})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(0, 1.5, 12, 6.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     ctx.rotate(direction * 0.18);
     ctx.fillStyle = body;
@@ -221,7 +241,7 @@ export function createWorldRenderer(canvas) {
     ctx.lineWidth = 1;
 
     ctx.beginPath();
-    ctx.ellipse(0, 0, 8.8, 5.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, rabbit.pregnancy ? 9.8 : 8.8, rabbit.pregnancy ? 6.4 : 5.8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
@@ -251,6 +271,13 @@ export function createWorldRenderer(canvas) {
       ctx.beginPath();
       ctx.arc(0, 0, 11, 0.2, Math.PI * 1.3);
       ctx.stroke();
+    }
+
+    if (rabbit.intent === "mate" && maturity >= 1) {
+      ctx.fillStyle = "rgba(104,212,189,0.85)";
+      ctx.beginPath();
+      ctx.arc(-2.5, -8.8, 1.15, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();

@@ -13,19 +13,51 @@ export function resetSimulation() {
   state.tick = 0;
   state.births = 0;
   state.deaths = 0;
+  state.droughtTimer = 0;
 
   for (let i = 0; i < state.foodTarget; i += 1) {
     state.food.push(createFood());
   }
 
   for (let i = 0; i < WORLD.initialRabbits; i += 1) {
-    state.rabbits.push(createRabbit(rand(5, WORLD.width - 5), rand(5, WORLD.height - 5)));
+    const sex = i % 2 === 0 ? "female" : "male";
+    const rabbit = createRabbit(rand(5, WORLD.width - 5), rand(5, WORLD.height - 5), createGenes(), 1, sex);
+    const startsAdult = i < WORLD.initialRabbits * 0.74;
+    rabbit.age = startsAdult ? rand(rabbit.maturityAge + 20, rabbit.maturityAge + 760) : rand(40, rabbit.maturityAge * 0.72);
+    rabbit.cooldown = startsAdult ? rand(0, 55) : rabbit.maturityAge - rabbit.age;
+    state.rabbits.push(rabbit);
+  }
+}
+
+export function triggerDrought() {
+  state.droughtTimer = Math.max(state.droughtTimer, 720);
+  state.food = state.food.filter(() => Math.random() > 0.22);
+  addParticle(WORLD.width * 0.5, WORLD.height * 0.48, "rgba(229,121,99,", 36);
+}
+
+export function introduceMigrants() {
+  const count = 12;
+  const generation = Math.max(1, Math.round(getAverages().generation));
+  for (let i = 0; i < count && state.rabbits.length < WORLD.maxRabbits; i += 1) {
+    const edge = Math.random() < 0.5;
+    const x = edge ? rand(2, WORLD.width - 2) : rand(0.8, 2.2);
+    const y = edge ? rand(0.8, 2.2) : rand(2, WORLD.height - 2);
+    const genes = createGenes(rand(-0.02, 0.12));
+    const rabbit = createRabbit(x, y, genes, generation, i % 2 === 0 ? "female" : "male");
+    rabbit.age = rand(rabbit.maturityAge + 30, rabbit.maturityAge + 520);
+    rabbit.cooldown = rand(0, 80);
+    state.rabbits.push(rabbit);
+    addParticle(x, y, "rgba(104,212,189,", 4);
   }
 }
 
 export function stepSimulation(dt) {
   state.tick += 1;
-  const climateGrowth = state.climate === "lush" ? 1.55 : state.climate === "dry" ? 0.55 : 1;
+  state.droughtTimer = Math.max(0, state.droughtTimer - dt);
+
+  const seasonWave = state.seasons ? 0.86 + Math.sin(state.tick / 560) * 0.28 : 1;
+  const droughtGrowth = state.droughtTimer > 0 ? 0.36 : 1;
+  const climateGrowth = (state.climate === "lush" ? 1.55 : state.climate === "dry" ? 0.55 : 1) * seasonWave * droughtGrowth;
   const pressureCost = state.pressure === "high" ? 1.36 : state.pressure === "medium" ? 1.14 : 1;
 
   if (state.food.length < state.foodTarget && Math.random() < 0.26 * climateGrowth) {
@@ -34,6 +66,7 @@ export function stepSimulation(dt) {
 
   for (const food of state.food) {
     food.growth = clamp(food.growth + 0.0028 * climateGrowth, 0, 1);
+    if (state.droughtTimer > 0) food.growth = clamp(food.growth - 0.0022 * dt, 0.2, 1);
     food.sway += 0.025;
   }
 
@@ -43,26 +76,35 @@ export function stepSimulation(dt) {
   for (const rabbit of state.rabbits) {
     rabbit.age += dt;
     rabbit.cooldown = Math.max(0, rabbit.cooldown - dt);
+    rabbit.nursing = Math.max(0, rabbit.nursing - dt);
     rabbit.hop += dt * lerp(0.12, 0.24, rabbit.genes.speed);
+    advancePregnancy(rabbit, newborns, dt);
 
     const speed = lerp(0.021, 0.07, rabbit.genes.speed);
     const sizeCost = lerp(0.45, 1.12, rabbit.genes.size);
     const speedCost = lerp(0.55, 1.65, rabbit.genes.speed);
     const metabolismBonus = lerp(1.26, 0.7, rabbit.genes.metabolism);
-    rabbit.energy -= 0.032 * speedCost * sizeCost * metabolismBonus * pressureCost * dt;
+    const pregnancyCost = rabbit.pregnancy ? 1.32 : 1;
+    rabbit.energy -= 0.032 * speedCost * sizeCost * metabolismBonus * pressureCost * pregnancyCost * dt;
 
-    const target = findNearestFood(rabbit);
-    rabbit.targetFood = target;
+    const foodTarget = findNearestFood(rabbit);
+    const mateTarget = canSeekMate(rabbit) ? findPotentialMate(rabbit) : null;
+    const hungry = rabbit.energy < reproductionEnergy(rabbit) * 0.92 || Boolean(rabbit.pregnancy);
+    const target = !hungry && mateTarget ? mateTarget : foodTarget;
+    rabbit.targetFood = foodTarget;
+    rabbit.targetMate = mateTarget;
+    rabbit.intent = target === mateTarget ? "mate" : target === foodTarget ? "food" : "wander";
 
     moveRabbit(rabbit, target, speed, dt);
     eatNearbyFood(rabbit);
-    tryReproduce(rabbit, newborns);
+    tryMate(rabbit);
 
     const maxAge = lerp(2450, 1450, rabbit.genes.speed) + rabbit.genes.metabolism * 550;
-    if (rabbit.energy <= 0 || rabbit.age > maxAge) {
+    const hunted = rabbit.energy > 0 && rabbit.age <= maxAge && isPredated(rabbit);
+    if (rabbit.energy <= 0 || rabbit.age > maxAge || hunted) {
       dead.add(rabbit);
       state.deaths += 1;
-      addParticle(rabbit.x, rabbit.y, "rgba(229,121,99,", 5);
+      addParticle(rabbit.x, rabbit.y, hunted ? "rgba(255,190,99," : "rgba(229,121,99,", hunted ? 10 : 5);
     }
   }
 
@@ -172,29 +214,72 @@ function eatNearbyFood(rabbit) {
   }
 }
 
-function tryReproduce(rabbit, newborns) {
+function tryMate(rabbit) {
+  if (rabbit.sex !== "female" || !canSeekMate(rabbit)) return;
+
   const mate = findMate(rabbit);
-  if (!mate || state.rabbits.length + newborns.length >= WORLD.maxRabbits) return;
+  if (!mate) return;
 
-  const cost = 31 + rabbit.genes.size * 14;
+  const cost = 18 + rabbit.genes.size * 9;
   rabbit.energy -= cost;
-  mate.energy -= cost;
-  rabbit.cooldown = lerp(90, 38, rabbit.genes.fertility);
-  mate.cooldown = lerp(90, 38, mate.genes.fertility);
+  mate.energy -= cost * 0.45;
+  rabbit.cooldown = lerp(210, 96, rabbit.genes.fertility);
+  mate.cooldown = lerp(80, 36, mate.genes.fertility);
+  rabbit.pregnancy = {
+    fatherGenes: { ...mate.genes },
+    fatherGeneration: mate.generation,
+    timer: lerp(330, 190, (rabbit.genes.fertility + mate.genes.fertility) * 0.5),
+    litterSize: getLitterSize(rabbit, mate),
+  };
 
-  const childGenes = inheritGenes(rabbit.genes, mate.genes);
-  const child = createRabbit(
-    clamp((rabbit.x + mate.x) * 0.5 + rand(-0.35, 0.35), 0.6, WORLD.width - 0.6),
-    clamp((rabbit.y + mate.y) * 0.5 + rand(-0.35, 0.35), 0.6, WORLD.height - 0.6),
-    childGenes,
-    Math.max(rabbit.generation, mate.generation) + 1,
+  addParticle(rabbit.x, rabbit.y, "rgba(104,212,189,", 8);
+}
+
+function advancePregnancy(rabbit, newborns, dt) {
+  if (!rabbit.pregnancy) return;
+
+  rabbit.pregnancy.timer -= dt;
+  if (rabbit.pregnancy.timer > 0) return;
+
+  const freeSlots = WORLD.maxRabbits - state.rabbits.length - newborns.length;
+  const litterSize = Math.max(0, Math.min(rabbit.pregnancy.litterSize, freeSlots));
+  for (let i = 0; i < litterSize; i += 1) {
+    const childGenes = inheritGenes(rabbit.genes, rabbit.pregnancy.fatherGenes);
+    const child = createRabbit(
+      clamp(rabbit.x + rand(-0.55, 0.55), 0.6, WORLD.width - 0.6),
+      clamp(rabbit.y + rand(-0.55, 0.55), 0.6, WORLD.height - 0.6),
+      childGenes,
+      Math.max(rabbit.generation, rabbit.pregnancy.fatherGeneration) + 1,
+    );
+
+    child.energy = 44 + rabbit.genes.metabolism * 12;
+    child.cooldown = child.maturityAge;
+    newborns.push(child);
+    state.births += 1;
+    addParticle(child.x, child.y, "rgba(104,212,189,", 5);
+  }
+
+  rabbit.energy -= 12 + litterSize * 9;
+  rabbit.nursing = 160;
+  rabbit.cooldown = lerp(180, 70, rabbit.genes.fertility);
+  rabbit.pregnancy = null;
+}
+
+function getLitterSize(mother, father) {
+  const fertility = (mother.genes.fertility + father.genes.fertility) * 0.5;
+  const energyBonus = mother.energy > 120 ? 1 : mother.energy > 96 ? 0.55 : 0;
+  const crowdingPenalty = state.rabbits.length > WORLD.maxRabbits * 0.72 ? -1 : 0;
+  return clamp(Math.round(1 + fertility * 2.8 + energyBonus + crowdingPenalty + rand(-0.75, 0.75)), 1, 4);
+}
+
+function canSeekMate(rabbit) {
+  return (
+    rabbit.age >= rabbit.maturityAge &&
+    rabbit.cooldown <= 0 &&
+    !rabbit.pregnancy &&
+    rabbit.nursing <= 0 &&
+    rabbit.energy >= reproductionEnergy(rabbit)
   );
-
-  child.energy = 58;
-  child.cooldown = 80;
-  newborns.push(child);
-  state.births += 1;
-  addParticle(child.x, child.y, "rgba(104,212,189,", 8);
 }
 
 function mutateGene(value) {
@@ -228,16 +313,44 @@ function findNearestFood(rabbit) {
   return nearest;
 }
 
+function findPotentialMate(rabbit) {
+  const vision = lerp(2.6, 8.4, rabbit.genes.vision);
+  return findBestMate(rabbit, vision * vision);
+}
+
 function findMate(rabbit) {
-  if (rabbit.energy < reproductionEnergy(rabbit) || rabbit.cooldown > 0) return null;
-  const radiusSq = 2.1 * 2.1;
+  return findBestMate(rabbit, 1.75 * 1.75);
+}
+
+function findBestMate(rabbit, radiusSq) {
+  if (!canSeekMate(rabbit)) return null;
+  let best = null;
+  let bestScore = -Infinity;
 
   for (const other of state.rabbits) {
-    if (other === rabbit || other.cooldown > 0 || other.energy < reproductionEnergy(other)) continue;
-    if (distanceSq(rabbit, other) < radiusSq) return other;
+    if (other === rabbit || other.sex === rabbit.sex || !canSeekMate(other)) continue;
+    const d = distanceSq(rabbit, other);
+    if (d > radiusSq) continue;
+
+    const fitness = (other.genes.speed + other.genes.vision + other.genes.metabolism + other.energy / 150) * 0.25;
+    const selectivity = state.mateSelectivity;
+    const score = fitness * selectivity - d * (1 - selectivity * 0.55);
+    if (score > bestScore) {
+      best = other;
+      bestScore = score;
+    }
   }
 
-  return null;
+  return best;
+}
+
+function isPredated(rabbit) {
+  if (state.predatorPressure <= 0 || rabbit.age < 90) return false;
+  const survivalTraits = (rabbit.genes.speed * 0.58 + rabbit.genes.vision * 0.42);
+  const ageRisk = rabbit.age < rabbit.maturityAge ? 1.25 : 1;
+  const pregnancyRisk = rabbit.pregnancy ? 1.18 : 1;
+  const vulnerability = lerp(2.1, 0.5, survivalTraits) * ageRisk * pregnancyRisk;
+  return Math.random() < 0.000075 * state.predatorPressure * vulnerability;
 }
 
 function addParticle(x, y, color, count = 6) {

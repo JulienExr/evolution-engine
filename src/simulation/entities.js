@@ -15,20 +15,28 @@ export function createGenes(seedBias = 0) {
   };
 }
 
-export function createRabbit(x, y, genes = createGenes(), generation = 1) {
+export function createRabbit(x, y, genes = createGenes(), generation = 1, sex = Math.random() < 0.5 ? "female" : "male") {
   return {
     id: makeId(),
     x,
     y,
+    renderX: x,
+    renderY: y,
     vx: rand(-0.01, 0.01),
     vy: rand(-0.01, 0.01),
     heading: rand(-Math.PI, Math.PI),
     energy: rand(58, 88),
     age: 0,
     generation,
+    sex,
+    maturityAge: Math.round(lerp(420, 260, genes.fertility) + genes.size * 70),
     cooldown: rand(0, 80),
+    pregnancy: null,
+    nursing: 0,
     genes,
     targetFood: null,
+    targetMate: null,
+    intent: "wander",
     hop: rand(0, Math.PI * 2),
   };
 }
