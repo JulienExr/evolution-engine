@@ -23,6 +23,7 @@ http://127.0.0.1:4173
 - Les genes ont des compromis : par exemple, un lapin rapide atteint mieux la nourriture mais consomme plus.
 - Les renards ont aussi des genes : vitesse, vision, metabolisme, fertilite et taille.
 - Les renards chassent les lapins, meurent de faim s'ils ne trouvent pas de proie, cherchent un partenaire et transmettent leurs genes avec mutation.
+- Les lapins detectent les renards proches selon leur vision et fuient avant le contact, avec un cout energetique.
 - La predation favorise indirectement les lapins rapides et attentifs.
 - Les saisons et les chocs secs modifient la croissance de la nourriture.
 - Les controles permettent de modifier la vitesse de simulation, la quantite de nourriture, le taux de mutation, le climat et la selection sexuelle, puis d'ajouter des lapins ou des renards.

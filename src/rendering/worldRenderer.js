@@ -275,8 +275,8 @@ export function createWorldRenderer(canvas) {
       ctx.stroke();
     }
 
-    if (rabbit.intent === "mate" && maturity >= 1) {
-      ctx.fillStyle = "rgba(104,212,189,0.85)";
+    if ((rabbit.intent === "mate" || rabbit.intent === "flee") && maturity >= 1) {
+      ctx.fillStyle = rabbit.intent === "flee" ? "rgba(255,190,99,0.9)" : "rgba(104,212,189,0.85)";
       ctx.beginPath();
       ctx.arc(-2.5, -8.8, 1.15, 0, Math.PI * 2);
       ctx.fill();

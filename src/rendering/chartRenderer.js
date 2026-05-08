@@ -1,5 +1,4 @@
 import { clamp } from "../core/math.js";
-import { WORLD } from "../core/constants.js";
 import { state } from "../state.js";
 
 export function createChartRenderer(chart) {
@@ -36,25 +35,19 @@ export function createChartRenderer(chart) {
 
     if (state.history.length < 2) return;
 
-    const maxPopulation = Math.max(20, ...state.history.map((point) => point.population));
+    const maxPopulation = Math.max(
+      20,
+      ...state.history.map((point) => point.population),
+      ...state.history.map((point) => point.foxes),
+    );
     plotLine(
       state.history.map((point) => point.population / maxPopulation),
       "#d7ef6f",
       legendHeight,
     );
     plotLine(
-      state.history.map((point) => point.speed),
-      "#68d4bd",
-      legendHeight,
-    );
-    plotLine(
-      state.history.map((point) => point.foxes / WORLD.maxFoxes),
+      state.history.map((point) => point.foxes / maxPopulation),
       "#ee8436",
-      legendHeight,
-    );
-    plotLine(
-      state.history.map((point) => point.foxSpeed),
-      "#ffb86b",
       legendHeight,
     );
   }
@@ -78,9 +71,7 @@ export function createChartRenderer(chart) {
   function drawLegend(width) {
     const items = [
       ["Lapins", "#d7ef6f"],
-      ["Vit. lapins", "#68d4bd"],
       ["Renards", "#ee8436"],
-      ["Vit. renards", "#ffb86b"],
     ];
 
     chartCtx.save();

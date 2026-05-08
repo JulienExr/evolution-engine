@@ -123,15 +123,20 @@ export function stepSimulation(dt) {
     const pregnancyCost = rabbit.pregnancy ? 1.32 : 1;
     rabbit.energy -= 0.032 * speedCost * sizeCost * metabolismBonus * pressureCost * pregnancyCost * dt;
 
-    const foodTarget = findNearestFood(rabbit);
-    const mateTarget = canSeekMate(rabbit) ? findPotentialMate(rabbit) : null;
+    const threat = findNearestFox(rabbit);
+    const foodTarget = threat ? null : findNearestFood(rabbit);
+    const mateTarget = !threat && canSeekMate(rabbit) ? findPotentialMate(rabbit) : null;
     const hungry = rabbit.energy < reproductionEnergy(rabbit) * 0.92 || Boolean(rabbit.pregnancy);
     const target = !hungry && mateTarget ? mateTarget : foodTarget;
     rabbit.targetFood = foodTarget;
     rabbit.targetMate = mateTarget;
-    rabbit.intent = target === mateTarget ? "mate" : target === foodTarget ? "food" : "wander";
+    rabbit.threat = threat;
+    rabbit.intent = threat ? "flee" : target === mateTarget ? "mate" : target === foodTarget ? "food" : "wander";
+    if (threat) {
+      rabbit.energy -= 0.018 * lerp(0.8, 1.45, rabbit.genes.speed) * dt;
+    }
 
-    moveRabbit(rabbit, target, speed, dt);
+    moveRabbit(rabbit, target, speed, dt, threat);
     eatNearbyFood(rabbit);
     tryMate(rabbit);
 
@@ -226,25 +231,27 @@ export function getFoxAverages() {
 }
 
 export function recordHistory() {
-  const averages = getAverages();
-  const foxAverages = getFoxAverages();
   state.history.push({
     tick: state.tick,
     population: state.rabbits.length,
     foxes: state.foxes.length,
-    speed: averages.speed,
-    vision: averages.vision,
-    foxSpeed: foxAverages.speed,
-    foxVision: foxAverages.vision,
   });
   if (state.history.length > 180) state.history.shift();
 }
 
-function moveRabbit(rabbit, target, speed, dt) {
+function moveRabbit(rabbit, target, speed, dt, threat = null) {
   let ax = 0;
   let ay = 0;
 
-  if (target) {
+  if (threat) {
+    const dx = rabbit.x - threat.x;
+    const dy = rabbit.y - threat.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const panic = lerp(1.1, 1.55, rabbit.genes.vision);
+    ax += (dx / d) * speed * panic;
+    ay += (dy / d) * speed * panic;
+    rabbit.heading += rand(-0.05, 0.05);
+  } else if (target) {
     const dx = target.x - rabbit.x;
     const dy = target.y - rabbit.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -262,8 +269,9 @@ function moveRabbit(rabbit, target, speed, dt) {
   if (rabbit.x > WORLD.width - margin) ax -= speed * 1.8;
   if (rabbit.y > WORLD.height - margin) ay -= speed * 1.8;
 
-  rabbit.vx = clamp((rabbit.vx + ax) * 0.82, -speed, speed);
-  rabbit.vy = clamp((rabbit.vy + ay) * 0.82, -speed, speed);
+  const maxSpeed = threat ? speed * 1.34 : speed;
+  rabbit.vx = clamp((rabbit.vx + ax) * 0.82, -maxSpeed, maxSpeed);
+  rabbit.vy = clamp((rabbit.vy + ay) * 0.82, -maxSpeed, maxSpeed);
   rabbit.x = clamp(rabbit.x + rabbit.vx * dt, 0.4, WORLD.width - 0.4);
   rabbit.y = clamp(rabbit.y + rabbit.vy * dt, 0.4, WORLD.height - 0.4);
 
@@ -619,6 +627,25 @@ function findNearestFood(rabbit) {
     const d = distanceSq(rabbit, food);
     if (d < visionSq && d < nearestD) {
       nearest = food;
+      nearestD = d;
+    }
+  }
+
+  return nearest;
+}
+
+function findNearestFox(rabbit) {
+  if (!state.foxes.length || rabbit.age < 45) return null;
+
+  const fearRadius = lerp(2.4, 8.8, rabbit.genes.vision);
+  const fearRadiusSq = fearRadius * fearRadius;
+  let nearest = null;
+  let nearestD = Infinity;
+
+  for (const fox of state.foxes) {
+    const d = distanceSq(rabbit, fox);
+    if (d < fearRadiusSq && d < nearestD) {
+      nearest = fox;
       nearestD = d;
     }
   }
