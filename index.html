@@ -47,9 +47,25 @@
             <input id="mutationInput" type="range" min="0.01" max="0.18" value="0.07" step="0.01" />
           </label>
 
+          <label class="control-row">
+            <span>Predateurs</span>
+            <input id="predatorInput" type="range" min="0" max="1" value="0.16" step="0.02" />
+          </label>
+
+          <label class="control-row">
+            <span>Selection</span>
+            <input id="mateInput" type="range" min="0" max="1" value="0.35" step="0.05" />
+          </label>
+
           <div class="button-grid">
             <button id="climateBtn" type="button">Climat stable</button>
             <button id="pressureBtn" type="button">Pression faible</button>
+          </div>
+
+          <div class="button-grid experiment-grid">
+            <button id="seasonBtn" type="button">Saisons actives</button>
+            <button id="droughtBtn" type="button">Choc sec</button>
+            <button id="migrantBtn" type="button">Ajouter migrants</button>
           </div>
         </section>
 
@@ -70,6 +86,14 @@
             <span>Morts</span>
             <strong id="statDeaths">0</strong>
           </div>
+          <div>
+            <span>Adultes</span>
+            <strong id="statAdults">0</strong>
+          </div>
+          <div>
+            <span>Gestation</span>
+            <strong id="statPregnant">0</strong>
+          </div>
         </section>
 
         <section class="panel-section traits">
@@ -89,6 +113,10 @@
           <div class="trait-row">
             <span>Taille</span>
             <meter id="traitSize" min="0" max="1" value="0.5"></meter>
+          </div>
+          <div class="trait-row">
+            <span>Fertilite</span>
+            <meter id="traitFertility" min="0" max="1" value="0.5"></meter>
           </div>
         </section>
 
