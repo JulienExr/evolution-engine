@@ -15,6 +15,16 @@ export function createGenes(seedBias = 0) {
   };
 }
 
+export function createFoxGenes(seedBias = 0) {
+  return {
+    speed: normalizeGene(rand(0.34, 0.78) + seedBias),
+    vision: normalizeGene(rand(0.32, 0.8) + seedBias * 0.35),
+    metabolism: normalizeGene(rand(0.34, 0.78) - seedBias * 0.2),
+    fertility: normalizeGene(rand(0.22, 0.62)),
+    size: normalizeGene(rand(0.38, 0.86)),
+  };
+}
+
 export function createRabbit(x, y, genes = createGenes(), generation = 1, sex = Math.random() < 0.5 ? "female" : "male") {
   return {
     id: makeId(),
@@ -49,6 +59,37 @@ export function createFood(x = rand(2, WORLD.width - 2), y = rand(2, WORLD.heigh
     energy: rand(16, 28),
     growth: rand(0.68, 1),
     sway: rand(0, Math.PI * 2),
+  };
+}
+
+export function createFox(
+  x,
+  y,
+  age = 0,
+  genes = createFoxGenes(),
+  generation = 1,
+  sex = Math.random() < 0.5 ? "female" : "male",
+) {
+  return {
+    id: makeId(),
+    x,
+    y,
+    renderX: x,
+    renderY: y,
+    vx: rand(-0.012, 0.012),
+    vy: rand(-0.012, 0.012),
+    heading: rand(-Math.PI, Math.PI),
+    energy: rand(78, 118),
+    age,
+    generation,
+    sex,
+    genes,
+    maturityAge: Math.round(lerp(760, 520, genes.fertility) + genes.size * 110),
+    cooldown: rand(260, 700),
+    targetRabbit: null,
+    targetMate: null,
+    intent: "prowl",
+    hop: rand(0, Math.PI * 2),
   };
 }
 
