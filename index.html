@@ -48,11 +48,6 @@
           </label>
 
           <label class="control-row">
-            <span>Predateurs</span>
-            <input id="predatorInput" type="range" min="0" max="1" value="0.16" step="0.02" />
-          </label>
-
-          <label class="control-row">
             <span>Selection</span>
             <input id="mateInput" type="range" min="0" max="1" value="0.35" step="0.05" />
           </label>
@@ -65,7 +60,8 @@
           <div class="button-grid experiment-grid">
             <button id="seasonBtn" type="button">Saisons actives</button>
             <button id="droughtBtn" type="button">Choc sec</button>
-            <button id="migrantBtn" type="button">Ajouter migrants</button>
+            <button id="rabbitBtn" type="button">Ajouter lapins</button>
+            <button id="foxBtn" type="button">Ajouter renards</button>
           </div>
         </section>
 
@@ -94,10 +90,18 @@
             <span>Gestation</span>
             <strong id="statPregnant">0</strong>
           </div>
+          <div>
+            <span>Renards</span>
+            <strong id="statFoxes">0</strong>
+          </div>
+          <div>
+            <span>Chasses</span>
+            <strong id="statHunted">0</strong>
+          </div>
         </section>
 
         <section class="panel-section traits">
-          <h2>Traits moyens</h2>
+          <h2>Traits lapins</h2>
           <div class="trait-row">
             <span>Vitesse</span>
             <meter id="traitSpeed" min="0" max="1" value="0.5"></meter>
@@ -117,6 +121,26 @@
           <div class="trait-row">
             <span>Fertilite</span>
             <meter id="traitFertility" min="0" max="1" value="0.5"></meter>
+          </div>
+        </section>
+
+        <section class="panel-section traits">
+          <h2>Traits renards</h2>
+          <div class="trait-row">
+            <span>Vitesse</span>
+            <meter id="foxTraitSpeed" min="0" max="1" value="0.5"></meter>
+          </div>
+          <div class="trait-row">
+            <span>Vision</span>
+            <meter id="foxTraitVision" min="0" max="1" value="0.5"></meter>
+          </div>
+          <div class="trait-row">
+            <span>Metabolisme</span>
+            <meter id="foxTraitMetabolism" min="0" max="1" value="0.5"></meter>
+          </div>
+          <div class="trait-row">
+            <span>Fertilite</span>
+            <meter id="foxTraitFertility" min="0" max="1" value="0.5"></meter>
           </div>
         </section>
 
