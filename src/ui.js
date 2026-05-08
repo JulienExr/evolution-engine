@@ -6,28 +6,34 @@ export function getUi() {
     speedLabel: document.querySelector("#speedLabel"),
     foodInput: document.querySelector("#foodInput"),
     mutationInput: document.querySelector("#mutationInput"),
-    predatorInput: document.querySelector("#predatorInput"),
     mateInput: document.querySelector("#mateInput"),
     climateBtn: document.querySelector("#climateBtn"),
     pressureBtn: document.querySelector("#pressureBtn"),
     seasonBtn: document.querySelector("#seasonBtn"),
     droughtBtn: document.querySelector("#droughtBtn"),
-    migrantBtn: document.querySelector("#migrantBtn"),
+    rabbitBtn: document.querySelector("#rabbitBtn"),
+    foxBtn: document.querySelector("#foxBtn"),
     population: document.querySelector("#statPopulation"),
     generation: document.querySelector("#statGeneration"),
     births: document.querySelector("#statBirths"),
     deaths: document.querySelector("#statDeaths"),
     adults: document.querySelector("#statAdults"),
     pregnant: document.querySelector("#statPregnant"),
+    foxes: document.querySelector("#statFoxes"),
+    hunted: document.querySelector("#statHunted"),
     traitSpeed: document.querySelector("#traitSpeed"),
     traitVision: document.querySelector("#traitVision"),
     traitMetabolism: document.querySelector("#traitMetabolism"),
     traitSize: document.querySelector("#traitSize"),
     traitFertility: document.querySelector("#traitFertility"),
+    foxTraitSpeed: document.querySelector("#foxTraitSpeed"),
+    foxTraitVision: document.querySelector("#foxTraitVision"),
+    foxTraitMetabolism: document.querySelector("#foxTraitMetabolism"),
+    foxTraitFertility: document.querySelector("#foxTraitFertility"),
   };
 }
 
-export function bindUiControls(ui, state, { onReset, onDrought, onMigrants }) {
+export function bindUiControls(ui, state, { onReset, onDrought, onRabbits, onFoxes }) {
   ui.pauseBtn.addEventListener("click", () => {
     state.running = !state.running;
     ui.pauseBtn.textContent = state.running ? "Pause" : "Lecture";
@@ -46,10 +52,6 @@ export function bindUiControls(ui, state, { onReset, onDrought, onMigrants }) {
 
   ui.mutationInput.addEventListener("input", () => {
     state.mutationRate = Number(ui.mutationInput.value);
-  });
-
-  ui.predatorInput.addEventListener("input", () => {
-    state.predatorPressure = Number(ui.predatorInput.value);
   });
 
   ui.mateInput.addEventListener("input", () => {
@@ -76,10 +78,11 @@ export function bindUiControls(ui, state, { onReset, onDrought, onMigrants }) {
   });
 
   ui.droughtBtn.addEventListener("click", onDrought);
-  ui.migrantBtn.addEventListener("click", onMigrants);
+  ui.rabbitBtn.addEventListener("click", onRabbits);
+  ui.foxBtn.addEventListener("click", onFoxes);
 }
 
-export function updateStats(ui, state, averages) {
+export function updateStats(ui, state, averages, foxAverages) {
   const adults = state.rabbits.filter((rabbit) => rabbit.age >= rabbit.maturityAge).length;
   const pregnant = state.rabbits.filter((rabbit) => rabbit.pregnancy).length;
 
@@ -89,9 +92,15 @@ export function updateStats(ui, state, averages) {
   ui.deaths.textContent = state.deaths.toString();
   ui.adults.textContent = adults.toString();
   ui.pregnant.textContent = pregnant.toString();
+  ui.foxes.textContent = state.foxes.length.toString();
+  ui.hunted.textContent = state.hunted.toString();
   ui.traitSpeed.value = averages.speed;
   ui.traitVision.value = averages.vision;
   ui.traitMetabolism.value = averages.metabolism;
   ui.traitSize.value = averages.size;
   ui.traitFertility.value = averages.fertility;
+  ui.foxTraitSpeed.value = foxAverages.speed;
+  ui.foxTraitVision.value = foxAverages.vision;
+  ui.foxTraitMetabolism.value = foxAverages.metabolism;
+  ui.foxTraitFertility.value = foxAverages.fertility;
 }
