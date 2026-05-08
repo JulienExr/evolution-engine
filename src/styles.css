@@ -208,6 +208,14 @@ input[type="range"] {
   margin-top: 12px;
 }
 
+.experiment-grid {
+  margin-top: 8px;
+}
+
+.experiment-grid button:last-child {
+  grid-column: 1 / -1;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -215,7 +223,7 @@ input[type="range"] {
 }
 
 .stats-grid div {
-  min-height: 72px;
+  min-height: 66px;
   padding: 12px;
   border: 1px solid rgba(224, 238, 221, 0.1);
   border-radius: 8px;
@@ -231,9 +239,9 @@ input[type="range"] {
 
 .stats-grid strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 7px;
   color: var(--text);
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
