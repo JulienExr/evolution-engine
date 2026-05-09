@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Evolution Engine</title>
-    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/styles.css?v=mobile-camera-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -22,6 +22,11 @@
             <button id="pauseBtn" type="button">Pause</button>
             <button id="resetBtn" type="button">Reset</button>
           </div>
+        </div>
+        <div class="camera-controls" aria-label="Controle camera">
+          <button id="zoomOutBtn" type="button" aria-label="Dezoomer">-</button>
+          <button id="resetCameraBtn" type="button" aria-label="Recentrer">0</button>
+          <button id="zoomInBtn" type="button" aria-label="Zoomer">+</button>
         </div>
       </section>
 
@@ -203,6 +208,6 @@
       </aside>
     </main>
 
-    <script type="module" src="src/app.js"></script>
+    <script type="module" src="src/app.js?v=mobile-camera-1"></script>
   </body>
 </html>

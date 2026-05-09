@@ -30,6 +30,7 @@ http://127.0.0.1:4173
 - La predation favorise indirectement les lapins rapides et attentifs.
 - Les saisons et les chocs secs modifient la croissance de la nourriture.
 - Cliquer sur un lapin ou un renard affiche son energie, son age, son etat et ses genes.
+- Sur mobile, la scene se deplace avec un doigt, zoome/dezoome avec deux doigts ou avec les boutons camera.
 - Les controles permettent de modifier la vitesse de simulation, la quantite de nourriture, le taux de mutation, le climat et la selection sexuelle, puis d'ajouter des lapins ou des renards.
 
 ## Fichiers

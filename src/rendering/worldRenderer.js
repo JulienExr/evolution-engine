@@ -12,6 +12,7 @@ export function createWorldRenderer(canvas) {
     key: "",
   };
   terrainCache.ctx = terrainCache.canvas.getContext("2d");
+  bindCameraButtons();
 
   function resize() {
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
@@ -61,54 +62,167 @@ export function createWorldRenderer(canvas) {
   }
 
   function attachCameraControls(onPick = null) {
+    const activePointers = new Map();
     let pointerStart = null;
+    let pinchState = null;
+    let didPinch = false;
 
     canvas.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       state.camera.drag = true;
       state.camera.lastX = event.clientX;
       state.camera.lastY = event.clientY;
       pointerStart = { x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
+
+      if (activePointers.size === 2) {
+        didPinch = true;
+        pointerStart = null;
+        pinchState = getPinchState();
+      }
     });
 
     canvas.addEventListener("pointermove", (event) => {
+      if (!activePointers.has(event.pointerId)) return;
+      event.preventDefault();
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (activePointers.size >= 2) {
+        const nextPinch = getPinchState();
+        if (pinchState && nextPinch) {
+          const zoomRatio = nextPinch.distance / Math.max(1, pinchState.distance);
+          zoomCamera(state.camera.zoom * zoomRatio, nextPinch.centerX, nextPinch.centerY);
+          panCamera(nextPinch.centerX - pinchState.centerX, nextPinch.centerY - pinchState.centerY);
+        }
+        pinchState = nextPinch;
+        return;
+      }
+
       if (!state.camera.drag) return;
       const dx = event.clientX - state.camera.lastX;
       const dy = event.clientY - state.camera.lastY;
-      state.camera.x += dx;
-      state.camera.y += dy;
+      panCamera(dx, dy);
       state.camera.lastX = event.clientX;
       state.camera.lastY = event.clientY;
     });
 
     canvas.addEventListener("pointerup", (event) => {
-      state.camera.drag = false;
-      if (onPick && pointerStart) {
+      const wasSinglePointer = activePointers.size === 1;
+      activePointers.delete(event.pointerId);
+      state.camera.drag = activePointers.size > 0;
+
+      if (onPick && pointerStart && wasSinglePointer && !didPinch) {
         const dx = event.clientX - pointerStart.x;
         const dy = event.clientY - pointerStart.y;
         if (Math.hypot(dx, dy) < 6) onPick(pickEntity(event.clientX, event.clientY));
       }
-      pointerStart = null;
-      canvas.releasePointerCapture(event.pointerId);
+
+      if (activePointers.size === 1) {
+        const [remaining] = activePointers.values();
+        state.camera.lastX = remaining.x;
+        state.camera.lastY = remaining.y;
+        pointerStart = null;
+        pinchState = null;
+      } else if (activePointers.size === 0) {
+        pointerStart = null;
+        pinchState = null;
+        didPinch = false;
+      }
+
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     });
 
-    canvas.addEventListener("pointercancel", () => {
-      state.camera.drag = false;
-      pointerStart = null;
+    canvas.addEventListener("pointercancel", (event) => endPointer(event));
+    canvas.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "mouse") endPointer(event);
     });
 
     canvas.addEventListener(
       "wheel",
       (event) => {
         event.preventDefault();
-        const before = state.camera.zoom;
-        state.camera.zoom = clamp(state.camera.zoom + (event.deltaY > 0 ? -0.08 : 0.08), 0.62, 1.55);
-        const factor = state.camera.zoom / before;
-        state.camera.x *= factor;
-        state.camera.y *= factor;
+        zoomCamera(state.camera.zoom + (event.deltaY > 0 ? -0.08 : 0.08), event.clientX, event.clientY);
       },
       { passive: false },
     );
+
+    function endPointer(event) {
+      activePointers.delete(event.pointerId);
+      state.camera.drag = activePointers.size > 0;
+      pointerStart = null;
+      pinchState = activePointers.size >= 2 ? getPinchState() : null;
+      if (activePointers.size === 0) didPinch = false;
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    }
+
+    function getPinchState() {
+      const points = [...activePointers.values()];
+      if (points.length < 2) return null;
+      const a = points[0];
+      const b = points[1];
+      return {
+        centerX: (a.x + b.x) * 0.5,
+        centerY: (a.y + b.y) * 0.5,
+        distance: Math.hypot(a.x - b.x, a.y - b.y),
+      };
+    }
+  }
+
+  function bindCameraButtons() {
+    const bindings = [
+      ["#zoomOutBtn", () => zoomOut()],
+      ["#resetCameraBtn", () => resetCamera()],
+      ["#zoomInBtn", () => zoomIn()],
+    ];
+
+    for (const [selector, action] of bindings) {
+      const button = document.querySelector(selector);
+      if (!button || button.dataset.cameraBound) continue;
+      button.dataset.cameraBound = "true";
+      button.addEventListener("click", () => {
+        action();
+        document.documentElement.dataset.cameraZoom = state.camera.zoom.toFixed(2);
+        render();
+      });
+    }
+  }
+
+  function panCamera(dx, dy) {
+    state.camera.x = clamp(state.camera.x + dx, -canvas.clientWidth * 1.35, canvas.clientWidth * 1.35);
+    state.camera.y = clamp(state.camera.y + dy, -canvas.clientHeight * 1.15, canvas.clientHeight * 1.15);
+  }
+
+  function zoomCamera(nextZoom, originClientX = canvas.clientWidth * 0.5, originClientY = canvas.clientHeight * 0.5) {
+    const rect = canvas.getBoundingClientRect();
+    const originX = originClientX - rect.left;
+    const originY = originClientY - rect.top;
+    const anchorX = canvas.clientWidth * 0.5;
+    const anchorY = canvas.clientHeight * 0.17;
+    const before = state.camera.zoom;
+    const after = clamp(nextZoom, 0.55, 1.8);
+    const factor = after / before;
+
+    state.camera.zoom = after;
+    state.camera.x = originX - anchorX - (originX - anchorX - state.camera.x) * factor;
+    state.camera.y = originY - anchorY - (originY - anchorY - state.camera.y) * factor;
+    state.camera.x = clamp(state.camera.x, -canvas.clientWidth * 1.35, canvas.clientWidth * 1.35);
+    state.camera.y = clamp(state.camera.y, -canvas.clientHeight * 1.15, canvas.clientHeight * 1.15);
+  }
+
+  function resetCamera() {
+    state.camera.x = 0;
+    state.camera.y = 0;
+    state.camera.zoom = 1;
+    state.camera.drag = false;
+  }
+
+  function zoomIn() {
+    zoomCamera(state.camera.zoom + 0.14);
+  }
+
+  function zoomOut() {
+    zoomCamera(state.camera.zoom - 0.14);
   }
 
   function worldToIso(x, y, z = 0) {
@@ -568,5 +682,5 @@ export function createWorldRenderer(canvas) {
     return state.selection?.type === type && state.selection.id === entity.id;
   }
 
-  return { attachCameraControls, render, resize };
+  return { attachCameraControls, render, resetCamera, resize, zoomIn, zoomOut };
 }

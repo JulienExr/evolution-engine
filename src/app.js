@@ -1,5 +1,5 @@
-import { createChartRenderer } from "./rendering/chartRenderer.js";
-import { createWorldRenderer } from "./rendering/worldRenderer.js";
+import { createChartRenderer } from "./rendering/chartRenderer.js?v=mobile-camera-1";
+import { createWorldRenderer } from "./rendering/worldRenderer.js?v=mobile-camera-1";
 import {
   getAverages,
   getFoxAverages,
@@ -9,9 +9,9 @@ import {
   resetSimulation,
   stepSimulation,
   triggerDrought,
-} from "./simulation/simulation.js";
+} from "./simulation/simulation.js?v=mobile-camera-1";
 import { state } from "./state.js";
-import { bindUiControls, getUi, updateStats } from "./ui.js";
+import { bindUiControls, getUi, updateStats } from "./ui.js?v=mobile-camera-1";
 
 const canvas = document.querySelector("#world");
 const chart = document.querySelector("#chart");

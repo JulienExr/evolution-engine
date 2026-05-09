@@ -2,6 +2,9 @@ export function getUi() {
   return {
     pauseBtn: document.querySelector("#pauseBtn"),
     resetBtn: document.querySelector("#resetBtn"),
+    zoomOutBtn: document.querySelector("#zoomOutBtn"),
+    resetCameraBtn: document.querySelector("#resetCameraBtn"),
+    zoomInBtn: document.querySelector("#zoomInBtn"),
     speedInput: document.querySelector("#speedInput"),
     speedLabel: document.querySelector("#speedLabel"),
     foodInput: document.querySelector("#foodInput"),
