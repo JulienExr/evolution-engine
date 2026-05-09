@@ -74,7 +74,11 @@ bindUiControls(ui, state, {
     updateUI();
   },
 });
-worldRenderer.attachCameraControls();
+worldRenderer.attachCameraControls((selection) => {
+  state.selection = selection;
+  updateUI();
+  worldRenderer.render();
+});
 
 resize();
 reset();
