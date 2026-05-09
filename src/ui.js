@@ -21,6 +21,19 @@ export function getUi() {
     pregnant: document.querySelector("#statPregnant"),
     foxes: document.querySelector("#statFoxes"),
     hunted: document.querySelector("#statHunted"),
+    inspectorSpecies: document.querySelector("#inspectorSpecies"),
+    inspectorEmpty: document.querySelector("#inspectorEmpty"),
+    inspectorBody: document.querySelector("#inspectorBody"),
+    inspectorIntent: document.querySelector("#inspectorIntent"),
+    inspectorEnergy: document.querySelector("#inspectorEnergy"),
+    inspectorAge: document.querySelector("#inspectorAge"),
+    inspectorGeneration: document.querySelector("#inspectorGeneration"),
+    inspectorSex: document.querySelector("#inspectorSex"),
+    inspectorSpeed: document.querySelector("#inspectorSpeed"),
+    inspectorVision: document.querySelector("#inspectorVision"),
+    inspectorMetabolism: document.querySelector("#inspectorMetabolism"),
+    inspectorSize: document.querySelector("#inspectorSize"),
+    inspectorFertility: document.querySelector("#inspectorFertility"),
     traitSpeed: document.querySelector("#traitSpeed"),
     traitVision: document.querySelector("#traitVision"),
     traitMetabolism: document.querySelector("#traitMetabolism"),
@@ -103,4 +116,48 @@ export function updateStats(ui, state, averages, foxAverages) {
   ui.foxTraitVision.value = foxAverages.vision;
   ui.foxTraitMetabolism.value = foxAverages.metabolism;
   ui.foxTraitFertility.value = foxAverages.fertility;
+  updateInspector(ui, state);
+}
+
+function updateInspector(ui, state) {
+  const selection = state.selection;
+  const entity =
+    selection?.type === "rabbit"
+      ? state.rabbits.find((rabbit) => rabbit.id === selection.id)
+      : selection?.type === "fox"
+        ? state.foxes.find((fox) => fox.id === selection.id)
+        : null;
+
+  if (!entity) {
+    state.selection = null;
+    ui.inspectorSpecies.textContent = "-";
+    ui.inspectorEmpty.hidden = false;
+    ui.inspectorBody.hidden = true;
+    return;
+  }
+
+  const species = selection.type === "rabbit" ? "Lapin" : "Renard";
+  ui.inspectorSpecies.textContent = species;
+  ui.inspectorEmpty.hidden = true;
+  ui.inspectorBody.hidden = false;
+  ui.inspectorIntent.textContent = formatIntent(entity);
+  ui.inspectorEnergy.textContent = Math.round(entity.energy).toString();
+  ui.inspectorAge.textContent = Math.round(entity.age).toString();
+  ui.inspectorGeneration.textContent = entity.generation.toString();
+  ui.inspectorSex.textContent = entity.sex === "female" ? "Femelle" : "Male";
+  ui.inspectorSpeed.value = entity.genes.speed;
+  ui.inspectorVision.value = entity.genes.vision;
+  ui.inspectorMetabolism.value = entity.genes.metabolism;
+  ui.inspectorSize.value = entity.genes.size;
+  ui.inspectorFertility.value = entity.genes.fertility;
+}
+
+function formatIntent(entity) {
+  if (entity.inRefuge && entity.intent === "flee") return "Refuge";
+  if (entity.intent === "flee") return "Fuite";
+  if (entity.intent === "food") return "Nourriture";
+  if (entity.intent === "mate") return "Reproduction";
+  if (entity.intent === "hunt") return "Chasse";
+  if (entity.intent === "prowl") return "Traque";
+  return "Exploration";
 }
