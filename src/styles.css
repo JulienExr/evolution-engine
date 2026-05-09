@@ -242,6 +242,49 @@ input[type="range"] {
   font-variant-numeric: tabular-nums;
 }
 
+.empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.inspector-body {
+  display: grid;
+  gap: 10px;
+}
+
+.inspector-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inspector-summary div {
+  min-height: 54px;
+  padding: 10px;
+  border: 1px solid rgba(224, 238, 221, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.inspector-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.inspector-summary strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .traits {
   display: grid;
   gap: 10px;
