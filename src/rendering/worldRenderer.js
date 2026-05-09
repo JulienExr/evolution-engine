@@ -4,8 +4,14 @@ import { state } from "../state.js";
 import { getTerrainAt } from "../simulation/terrain.js";
 
 export function createWorldRenderer(canvas) {
-  const ctx = canvas.getContext("2d", { alpha: false });
+  let ctx = canvas.getContext("2d", { alpha: false });
   let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const terrainCache = {
+    canvas: document.createElement("canvas"),
+    ctx: null,
+    key: "",
+  };
+  terrainCache.ctx = terrainCache.canvas.getContext("2d");
 
   function resize() {
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
@@ -30,9 +36,10 @@ export function createWorldRenderer(canvas) {
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
-    drawTerrain();
+    drawTerrainCached();
 
     const drawables = [];
+    for (const refuge of state.refuges) drawables.push({ kind: "refuge", y: refuge.x + refuge.y + 0.04, item: refuge });
     for (const food of state.food) drawables.push({ kind: "food", y: food.x + food.y, item: food });
     for (const rabbit of state.rabbits) drawables.push({ kind: "rabbit", y: rabbit.x + rabbit.y + 0.12, item: rabbit });
     for (const fox of state.foxes) drawables.push({ kind: "fox", y: fox.x + fox.y + 0.18, item: fox });
@@ -42,6 +49,7 @@ export function createWorldRenderer(canvas) {
     drawables.sort((a, b) => a.y - b.y);
 
     for (const drawable of drawables) {
+      if (drawable.kind === "refuge") drawRefuge(drawable.item);
       if (drawable.kind === "food") drawFood(drawable.item);
       if (drawable.kind === "rabbit") drawRabbit(drawable.item);
       if (drawable.kind === "fox") drawFox(drawable.item);
@@ -52,11 +60,14 @@ export function createWorldRenderer(canvas) {
     ctx.restore();
   }
 
-  function attachCameraControls() {
+  function attachCameraControls(onPick = null) {
+    let pointerStart = null;
+
     canvas.addEventListener("pointerdown", (event) => {
       state.camera.drag = true;
       state.camera.lastX = event.clientX;
       state.camera.lastY = event.clientY;
+      pointerStart = { x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
     });
 
@@ -72,11 +83,18 @@ export function createWorldRenderer(canvas) {
 
     canvas.addEventListener("pointerup", (event) => {
       state.camera.drag = false;
+      if (onPick && pointerStart) {
+        const dx = event.clientX - pointerStart.x;
+        const dy = event.clientY - pointerStart.y;
+        if (Math.hypot(dx, dy) < 6) onPick(pickEntity(event.clientX, event.clientY));
+      }
+      pointerStart = null;
       canvas.releasePointerCapture(event.pointerId);
     });
 
     canvas.addEventListener("pointercancel", () => {
       state.camera.drag = false;
+      pointerStart = null;
     });
 
     canvas.addEventListener(
@@ -125,9 +143,16 @@ export function createWorldRenderer(canvas) {
     const wet = tile.moisture;
     const drought = state.droughtTimer > 0 ? 1 : 0;
     const winter = state.seasons ? clamp(-Math.sin(state.tick / 560), 0, 1) : 0;
-    const r = Math.round(58 + tile.shade * 38 - wet * 10 + drought * 36 + winter * 4);
-    const g = Math.round(104 + tile.shade * 82 + wet * 28 - drought * 42 - winter * 18);
-    const b = Math.round(65 + tile.shade * 38 + wet * 18 - drought * 20 + winter * 18);
+    const biomeBase = {
+      dry: [116, 124, 73],
+      grassland: [62, 122, 76],
+      meadow: [72, 148, 83],
+      thicket: [45, 91, 67],
+      wetland: [45, 105, 105],
+    }[tile.biome] || [62, 122, 76];
+    const r = Math.round(biomeBase[0] + tile.shade * 26 - wet * 8 + drought * 34 + winter * 5);
+    const g = Math.round(biomeBase[1] + tile.shade * 44 + wet * 20 - drought * 38 - winter * 16);
+    const b = Math.round(biomeBase[2] + tile.shade * 24 + wet * 16 - drought * 18 + winter * 18);
     return `rgb(${r},${g},${b})`;
   }
 
@@ -136,6 +161,8 @@ export function createWorldRenderer(canvas) {
       const p = worldToIso(tile.x + 0.5, tile.y + 0.5, tile.h);
       const w = WORLD.tileW * state.camera.zoom + 0.8;
       const h = WORLD.tileH * state.camera.zoom + 0.8;
+      if (p.x < -w || p.x > canvas.clientWidth + w || p.y < -h || p.y > canvas.clientHeight + h * 3) continue;
+
       const fill = grassColor(tile);
       drawDiamond(p.x, p.y, w, h, fill, "rgba(12,24,18,0.12)");
 
@@ -150,7 +177,15 @@ export function createWorldRenderer(canvas) {
         );
       }
 
-      if (tile.blades.length && state.camera.zoom > 0.72) {
+      if (tile.biome === "thicket" && state.camera.zoom > 0.78) {
+        ctx.fillStyle = "rgba(18, 49, 38, 0.26)";
+        ctx.beginPath();
+        ctx.ellipse(p.x - w * 0.08, p.y - h * 0.02, w * 0.19, h * 0.12, -0.4, 0, Math.PI * 2);
+        ctx.ellipse(p.x + w * 0.11, p.y + h * 0.03, w * 0.17, h * 0.1, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (tile.blades.length && state.camera.zoom > 0.9) {
         ctx.strokeStyle = "rgba(221,239,157,0.18)";
         ctx.lineWidth = Math.max(1, state.camera.zoom);
         for (const blade of tile.blades) {
@@ -163,6 +198,74 @@ export function createWorldRenderer(canvas) {
         }
       }
     }
+  }
+
+  function drawTerrainCached() {
+    const cacheCanvas = terrainCache.canvas;
+    const cacheCtx = terrainCache.ctx;
+    const seasonBucket = Math.floor(state.tick / 48);
+    const key = [
+      canvas.width,
+      canvas.height,
+      state.terrain.length,
+      state.droughtTimer > 0 ? 1 : 0,
+      state.seasons ? seasonBucket : 0,
+      state.camera.zoom.toFixed(3),
+      state.camera.x.toFixed(1),
+      state.camera.y.toFixed(1),
+    ].join(":");
+
+    if (terrainCache.key !== key) {
+      terrainCache.key = key;
+      cacheCanvas.width = canvas.width;
+      cacheCanvas.height = canvas.height;
+      cacheCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cacheCtx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+      const mainCtx = ctx;
+      ctx = cacheCtx;
+      drawTerrain();
+      ctx = mainCtx;
+    }
+
+    ctx.drawImage(cacheCanvas, 0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
+
+  function drawRefuge(refuge) {
+    const tile = getTerrainAt(state.terrain, refuge.x, refuge.y);
+    const p = worldToIso(refuge.x, refuge.y, tile.h + 0.04);
+    const zoom = state.camera.zoom;
+    const size = (10 + refuge.radius * 8) * zoom;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.fillStyle = "rgba(8, 12, 10, 0.42)";
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.2, size * 0.72, size * 0.26, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(206, 185, 126, 0.52)";
+    ctx.lineWidth = Math.max(1, 1.2 * zoom);
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.16, size * 0.54, size * 0.18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(35, 78, 52, 0.78)";
+    for (let i = -1; i <= 1; i += 1) {
+      ctx.beginPath();
+      ctx.ellipse(i * size * 0.24, -size * 0.08, size * 0.24, size * 0.14, i * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const capacity = refuge.capacity ?? 3;
+    const used = Math.min(capacity, (refuge.occupants ?? 0) + (refuge.reserved ?? 0));
+    for (let i = 0; i < capacity; i += 1) {
+      ctx.fillStyle = i < used ? "rgba(104,212,189,0.82)" : "rgba(241,244,236,0.28)";
+      ctx.beginPath();
+      ctx.arc((i - 1) * size * 0.18, size * 0.5, Math.max(1.2, size * 0.045), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function rabbitColor(rabbit) {
@@ -208,7 +311,8 @@ export function createWorldRenderer(canvas) {
     rabbit.renderY = lerp(rabbit.renderY ?? rabbit.y, rabbit.y, 0.34);
 
     const tile = getTerrainAt(state.terrain, rabbit.renderX, rabbit.renderY);
-    const hop = Math.max(0, Math.sin(rabbit.hop)) * 0.26;
+    const hide = rabbit.hideProgress ?? 0;
+    const hop = Math.max(0, Math.sin(rabbit.hop)) * 0.26 * (1 - hide);
     const p = worldToIso(rabbit.renderX, rabbit.renderY, tile.h + hop);
     const maturity = clamp(rabbit.age / rabbit.maturityAge, 0, 1);
     const ageScale = lerp(0.48, 1, maturity);
@@ -222,11 +326,24 @@ export function createWorldRenderer(canvas) {
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.scale(scale, scale);
+    if (hide > 0) {
+      ctx.translate(0, hide * 7);
+      ctx.scale(1 - hide * 0.16, 1 - hide * 0.42);
+      ctx.globalAlpha = 1 - hide * 0.22;
+    }
 
     ctx.fillStyle = "rgba(6,12,9,0.26)";
     ctx.beginPath();
     ctx.ellipse(0, 8, 10 * pregnancyScale, 3.6, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (isSelected("rabbit", rabbit)) {
+      ctx.strokeStyle = "rgba(241,244,236,0.9)";
+      ctx.lineWidth = 1.5 / Math.max(0.55, scale);
+      ctx.beginPath();
+      ctx.ellipse(0, 3, 14, 8.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     if (rabbit.pregnancy) {
       const pulse = 0.45 + Math.sin(state.tick / 18 + rabbit.age * 0.02) * 0.12;
@@ -282,6 +399,14 @@ export function createWorldRenderer(canvas) {
       ctx.fill();
     }
 
+    if (rabbit.inRefuge && rabbit.intent === "flee") {
+      ctx.strokeStyle = "rgba(104,212,189,0.78)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(4.8, -8.8, 1.9, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
@@ -306,6 +431,14 @@ export function createWorldRenderer(canvas) {
     ctx.beginPath();
     ctx.ellipse(0, 8.5, 13, 4.2, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (isSelected("fox", fox)) {
+      ctx.strokeStyle = "rgba(241,244,236,0.9)";
+      ctx.lineWidth = 1.5 / Math.max(0.55, scale);
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 17, 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     if (fox.intent === "hunt") {
       ctx.strokeStyle = "rgba(255,190,99,0.35)";
@@ -397,6 +530,42 @@ export function createWorldRenderer(canvas) {
     gradient.addColorStop(1, "rgba(0,0,0,0.32)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, h);
+  }
+
+  function pickEntity(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    let best = null;
+    let bestDistance = Infinity;
+
+    for (const fox of state.foxes) {
+      const tile = getTerrainAt(state.terrain, fox.renderX ?? fox.x, fox.renderY ?? fox.y);
+      const p = worldToIso(fox.renderX ?? fox.x, fox.renderY ?? fox.y, tile.h + 0.18);
+      const d = Math.hypot(sx - p.x, sy - p.y);
+      const threshold = 18 * state.camera.zoom;
+      if (d < threshold && d < bestDistance) {
+        best = { type: "fox", id: fox.id };
+        bestDistance = d;
+      }
+    }
+
+    for (const rabbit of state.rabbits) {
+      const tile = getTerrainAt(state.terrain, rabbit.renderX ?? rabbit.x, rabbit.renderY ?? rabbit.y);
+      const p = worldToIso(rabbit.renderX ?? rabbit.x, rabbit.renderY ?? rabbit.y, tile.h + 0.16);
+      const d = Math.hypot(sx - p.x, sy - p.y);
+      const threshold = 14 * state.camera.zoom;
+      if (d < threshold && d < bestDistance) {
+        best = { type: "rabbit", id: rabbit.id };
+        bestDistance = d;
+      }
+    }
+
+    return best;
+  }
+
+  function isSelected(type, entity) {
+    return state.selection?.type === type && state.selection.id === entity.id;
   }
 
   return { attachCameraControls, render, resize };
