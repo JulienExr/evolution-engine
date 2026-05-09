@@ -100,6 +100,58 @@
           </div>
         </section>
 
+        <section class="panel-section inspector-section">
+          <div class="section-title">
+            <h2>Inspecteur</h2>
+            <span id="inspectorSpecies">-</span>
+          </div>
+          <p id="inspectorEmpty" class="empty-state">Aucune entite selectionnee</p>
+          <div id="inspectorBody" class="inspector-body" hidden>
+            <div class="inspector-summary">
+              <div>
+                <span>Etat</span>
+                <strong id="inspectorIntent">-</strong>
+              </div>
+              <div>
+                <span>Energie</span>
+                <strong id="inspectorEnergy">0</strong>
+              </div>
+              <div>
+                <span>Age</span>
+                <strong id="inspectorAge">0</strong>
+              </div>
+              <div>
+                <span>Generation</span>
+                <strong id="inspectorGeneration">0</strong>
+              </div>
+              <div>
+                <span>Sexe</span>
+                <strong id="inspectorSex">-</strong>
+              </div>
+            </div>
+            <div class="trait-row">
+              <span>Vitesse</span>
+              <meter id="inspectorSpeed" min="0" max="1" value="0.5"></meter>
+            </div>
+            <div class="trait-row">
+              <span>Vision</span>
+              <meter id="inspectorVision" min="0" max="1" value="0.5"></meter>
+            </div>
+            <div class="trait-row">
+              <span>Metabolisme</span>
+              <meter id="inspectorMetabolism" min="0" max="1" value="0.5"></meter>
+            </div>
+            <div class="trait-row">
+              <span>Taille</span>
+              <meter id="inspectorSize" min="0" max="1" value="0.5"></meter>
+            </div>
+            <div class="trait-row">
+              <span>Fertilite</span>
+              <meter id="inspectorFertility" min="0" max="1" value="0.5"></meter>
+            </div>
+          </div>
+        </section>
+
         <section class="panel-section traits">
           <h2>Traits lapins</h2>
           <div class="trait-row">
@@ -146,7 +198,7 @@
 
         <section class="panel-section chart-section">
           <h2>Evolution</h2>
-          <canvas id="chart" width="320" height="150" aria-label="Graphique population et vitesse"></canvas>
+          <canvas id="chart" width="320" height="150" aria-label="Graphique population lapins et renards"></canvas>
         </section>
       </aside>
     </main>
